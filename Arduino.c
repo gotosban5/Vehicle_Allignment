@@ -73,7 +73,9 @@ void loop() {
   float toeAngle = (rollAngle - pitchAngle) / 2;
 
   // Ángulo de Caster
-  float casterAngle = atan2(pitchAngle, rollAngle) * 180.0 / PI;
+  float wheelBase = 2.443
+  float trackWidth = 1.387
+  float casterAngle = atan2(tan(rollAngle) * wheelBase, trackWidth) * 180.0 / PI;
 
   Serial.print("Camber Angle: ");
   Serial.println(camberAngle);
