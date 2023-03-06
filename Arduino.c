@@ -60,10 +60,23 @@ void loop() {
   float rollAngle = 0.96 * (roll + gyroXrate * dt) + 0.04 * rollAccel;
   float pitchAngle = 0.96 * (pitch + gyroYrate * dt) + 0.04 * pitchAccel;
 
-  float ToeAngle = (rollAngle - pitchAngle) / 2;
+  // Calculate camber angle
+  float camberAngle = -rollAngle;
 
-  Serial.print("Vehicle Angle: ");
-  Serial.println(ToeAngle);
+  // Calculate toe angle
+  float frontToeAngle = pitchAngle;
+  float rearToeAngle = pitchAngle;
+  float toeAngle = frontToeAngle - rearToeAngle;
+
+  // Calculate caster angle
+  float casterAngle = atan2(pitchAngle, rollAngle) * 180.0 / PI;
+
+  Serial.print("Camber Angle: ");
+  Serial.println(camberAngle);
+  Serial.print("Toe Angle: ");
+  Serial.println(toeAngle);
+  Serial.print("Caster Angle: ");
+  Serial.println(casterAngle);
 
   delay(10);
 }
