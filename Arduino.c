@@ -40,7 +40,7 @@ void loop() {
   float gyroY = gy / 131.0;
   float gyroZ = gz / 131.0;
 
-  float dt = 0.01; // time interval in seconds
+  float dt = 0.1; // intervalo de tiempo
 
   float gyroXrate = gyroX;
   float gyroYrate = gyroY;
@@ -49,26 +49,30 @@ void loop() {
   float roll = 0.0;
   float pitch = 0.0;
   float yaw = 0.0;
+  
+  // Integración del giroscopip
 
   roll += gyroXrate * dt;
   pitch += gyroYrate * dt;
   yaw += gyroZrate * dt;
+  
+  // Ejes direccionales
 
   float rollAccel = atan2(accelY, accelZ) * 180.0 / PI;
   float pitchAccel = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / PI;
+  
+  // Filtro complementario
 
   float rollAngle = 0.96 * (roll + gyroXrate * dt) + 0.04 * rollAccel;
   float pitchAngle = 0.96 * (pitch + gyroYrate * dt) + 0.04 * pitchAccel;
 
-  // Calculate camber angle
-  float camberAngle = -rollAngle;
+  // Ángulo de Camber
+  float camberAngle = atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / PI;
 
-  // Calculate toe angle
-  float frontToeAngle = pitchAngle;
-  float rearToeAngle = pitchAngle;
-  float toeAngle = frontToeAngle - rearToeAngle;
+  // Ángulo de Toe
+  float toeAngle = (rollAngle - pitchAngle) / 2;
 
-  // Calculate caster angle
+  // Ángulo de Caster
   float casterAngle = atan2(pitchAngle, rollAngle) * 180.0 / PI;
 
   Serial.print("Camber Angle: ");
