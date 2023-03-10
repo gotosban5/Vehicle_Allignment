@@ -3,13 +3,13 @@
 
 MPU6050 mpu;
 
-// Calibration values
+// Datos de Calibración
 float accelXzero = -0.1;
 float accelYzero = 0.2;
 float accelZzero = 10.1;
 
-// Filter parameters
-float alpha = 0.95; // Complementary filter constant
+// Filtro complementario Paso Bajo
+float alpha = 0.95; // Constante
 
 // Output angles
 float camber = 0;
@@ -20,16 +20,16 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
   mpu.initialize();
-  mpu.setFullScaleAccelRange(2); // Set accelerometer range to +/- 2g
+  mpu.setFullScaleAccelRange(2); // rango del acelerometro +/- 2g
 }
 
 void loop() {
-  // Read accelerometer and gyroscope values
+  
   int16_t accelXraw, accelYraw, accelZraw;
   int16_t gyroXraw, gyroYraw, gyroZraw;
   mpu.getMotion6(&accelXraw, &accelYraw, &accelZraw, &gyroXraw, &gyroYraw, &gyroZraw);
 
-  // Convert raw values to acceleration in m/s^2 and angular velocity in deg/s
+  // Conversión de aceleración a m/s^2 y velocidad angular en grad/s
   float accelX = (float)accelXraw / 16384.0 * 9.81;
   float accelY = (float)accelYraw / 16384.0 * 9.81;
   float accelZ = (float)accelZraw / 16384.0 * 9.81;
@@ -37,7 +37,7 @@ void loop() {
   float gyroY = (float)gyroYraw / 131.0;
   float gyroZ = (float)gyroZraw / 131.0;
 
-  // Apply calibration offsets to accelerometer values
+  // Aplicación de la calibración
   accelX -= accelXzero;
   accelY -= accelYzero;
   accelZ -= accelZzero;
@@ -46,7 +46,7 @@ void loop() {
   float pitch = 0.0;
   float yaw = 0.0;
 
-  // Integración del giroscopio
+  // Integración del giroscopio a grados
 
   float dt = 0.01;
 
@@ -64,16 +64,16 @@ void loop() {
   float rollAngle = (0.95 * roll) + (0.05 * rollAccel);
   float pitchAngle = (0.95 * pitch) + (0.05 * pitchAccel);
 
-  // Calculate Camber angle
+  // Camber
   camber = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
-  // Calculate Toe angle
+  // Toe
   toe = (((rollAngle - pitchAngle) / 2) * 180.0 / PI);
   
-  // Apply Complementary Filter to Gyroscope values
+  // Caster
   caster = alpha * (caster + gyroZ * 0.01) + (1 - alpha) * atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
-  // Print angles to Serial Monitor
+  // Resultados
   Serial.print("Camber angle: ");
   Serial.print(camber);
   Serial.print(" degrees, Toe angle: ");
