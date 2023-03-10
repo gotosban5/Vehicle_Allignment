@@ -9,12 +9,15 @@ float accelYzero = 0.2;
 float accelZzero = 10.1;
 
 // Filtro complementario Paso Bajo
-float alpha = 0.95; // Constante
+float alpha = 0.98; // Constante
 
 // Output angles
 float camber = 0;
 float toe = 0;
 float caster = 0;
+float casterTotal = 0;
+float wheelBase = 2.443;
+float trackWidth = 1.338;
 
 void setup() {
   Serial.begin(9600);
@@ -57,21 +60,25 @@ void loop() {
   // Ejes direccionales
 
   float rollAccel = atan(accelY / accelZ) * 180.0 / PI;
+  // float rollAccel = atan(accelY / ((pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
   float pitchAccel = atan(-accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
   // Filtro complementario
 
-  float rollAngle = (0.95 * roll) + (0.05 * rollAccel);
-  float pitchAngle = (0.95 * pitch) + (0.05 * pitchAccel);
+  float rollAngle = (0.98 * roll) + (0.02 * rollAccel);
+  float pitchAngle = (0.98 * pitch) + (0.02 * pitchAccel);
 
   // Camber
   camber = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
   // Toe
-  toe = (((rollAngle - pitchAngle) / 2) * 180.0 / PI);
+  toe = atan2(tan(roll), cos(pitch) - yaw) * 180.0 / PI;
+  //toe = ((rollAngle - pitchAngle) / 2);
   
   // Caster
-  caster = alpha * (caster + gyroZ * 0.01) + (1 - alpha) * atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
+  caster = alpha * (caster + yaw) + (1 - alpha) * atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2)))* 180.0 / PI;
+  casterTotal = atan(tan(caster) * wheelBase / trackWidth);
+  
 
   // Resultados
   Serial.print("Camber angle: ");
@@ -79,8 +86,8 @@ void loop() {
   Serial.print(" degrees, Toe angle: ");
   Serial.print(toe);
   Serial.print(" degrees, Caster angle: ");
-  Serial.print(caster);
+  Serial.print(casterTotal);
   Serial.println(" degrees");
 
-  delay(100);
+  delay(500);
 }
