@@ -3,86 +3,84 @@
 
 MPU6050 mpu;
 
+// Calibration values
+float accelXzero = -0.1;
+float accelYzero = 0.2;
+float accelZzero = 10.1;
+
+// Filter parameters
+float alpha = 0.95; // Complementary filter constant
+
+// Output angles
+float camber = 0;
+float toe = 0;
+float caster = 0;
+
 void setup() {
   Serial.begin(9600);
-
-  while (!Serial) {}
-
   Wire.begin();
   mpu.initialize();
-
-  if (mpu.testConnection()) {
-    Serial.println("MPU6050 connection successful");
-  } else {
-    Serial.println("MPU6050 connection failed");
-    while (1) {}
-  }
-
-  mpu.setXAccelOffset(0);
-  mpu.setYAccelOffset(0);
-  mpu.setZAccelOffset(0);
-  mpu.setXGyroOffset(0);
-  mpu.setYGyroOffset(0);
-  mpu.setZGyroOffset(0);
+  mpu.setFullScaleAccelRange(2); // Set accelerometer range to +/- 2g
 }
 
 void loop() {
-  int16_t ax, ay, az;
-  int16_t gx, gy, gz;
+  // Read accelerometer and gyroscope values
+  int16_t accelXraw, accelYraw, accelZraw;
+  int16_t gyroXraw, gyroYraw, gyroZraw;
+  mpu.getMotion6(&accelXraw, &accelYraw, &accelZraw, &gyroXraw, &gyroYraw, &gyroZraw);
 
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  // Convert raw values to acceleration in m/s^2 and angular velocity in deg/s
+  float accelX = (float)accelXraw / 16384.0 * 9.81;
+  float accelY = (float)accelYraw / 16384.0 * 9.81;
+  float accelZ = (float)accelZraw / 16384.0 * 9.81;
+  float gyroX = (float)gyroXraw / 131.0;
+  float gyroY = (float)gyroYraw / 131.0;
+  float gyroZ = (float)gyroZraw / 131.0;
 
-  float accelX = ax / 16384.0;
-  float accelY = ay / 16384.0;
-  float accelZ = az / 16384.0;
-
-  float gyroX = gx / 131.0;
-  float gyroY = gy / 131.0;
-  float gyroZ = gz / 131.0;
-
-  float dt = 0.1; // intervalo de tiempo
-
-  float gyroXrate = gyroX;
-  float gyroYrate = gyroY;
-  float gyroZrate = gyroZ;
+  // Apply calibration offsets to accelerometer values
+  accelX -= accelXzero;
+  accelY -= accelYzero;
+  accelZ -= accelZzero;
 
   float roll = 0.0;
   float pitch = 0.0;
   float yaw = 0.0;
-  
-  // Integración del giroscopip
 
-  roll += gyroXrate * dt;
-  pitch += gyroYrate * dt;
-  yaw += gyroZrate * dt;
-  
+  // Integración del giroscopio
+
+  float dt = 0.01;
+
+  roll += gyroX * dt;
+  pitch += gyroY * dt;
+  yaw += gyroZ * dt;
+
   // Ejes direccionales
 
-  float rollAccel = atan2(accelY, accelZ) * 180.0 / PI;
-  float pitchAccel = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / PI;
-  
+  float rollAccel = atan(accelY / accelZ) * 180.0 / PI;
+  float pitchAccel = atan(-accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
+
   // Filtro complementario
 
-  float rollAngle = 0.96 * (roll + gyroXrate * dt) + 0.04 * rollAccel;
-  float pitchAngle = 0.96 * (pitch + gyroYrate * dt) + 0.04 * pitchAccel;
+  float rollAngle = (0.95 * roll) + (0.05 * rollAccel);
+  float pitchAngle = (0.95 * pitch) + (0.05 * pitchAccel);
 
-  // Ángulo de Camber
-  float camberAngle = atan2(accelY, sqrt(accelX * accelX + accelZ * accelZ)) * 180.0 / PI;
+  // Calculate Camber angle
+  camber = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
-  // Ángulo de Toe
-  float toeAngle = (rollAngle - pitchAngle) / 2;
+  // Calculate Toe angle
+  toe = (((rollAngle - pitchAngle) / 2) * 180.0 / PI);
+  
+  // Apply Complementary Filter to Gyroscope values
+  caster = alpha * (caster + gyroZ * 0.01) + (1 - alpha) * atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
 
-  // Ángulo de Caster
-  float wheelBase = 2.443
-  float trackWidth = 1.387
-  float casterAngle = atan2(tan(rollAngle) * wheelBase, trackWidth) * 180.0 / PI;
+  // Print angles to Serial Monitor
+  Serial.print("Camber angle: ");
+  Serial.print(camber);
+  Serial.print(" degrees, Toe angle: ");
+  Serial.print(toe);
+  Serial.print(" degrees, Caster angle: ");
+  Serial.print(caster);
+  Serial.println(" degrees");
 
-  Serial.print("Camber Angle: ");
-  Serial.println(camberAngle);
-  Serial.print("Toe Angle: ");
-  Serial.println(toeAngle);
-  Serial.print("Caster Angle: ");
-  Serial.println(casterAngle);
-
-  delay(10);
+  delay(100);
 }
