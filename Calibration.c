@@ -20,6 +20,9 @@ void setup() {
 
 void loop() {
   // Collect accelerometer and gyroscope data for calibration
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+  
   for (int i = 0; i < samples; i++) {
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     accelXoffset += ax;
