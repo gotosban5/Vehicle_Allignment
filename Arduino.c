@@ -4,12 +4,12 @@
 MPU6050 mpu;
 
 // Datos de Calibración
-float accelXzero = -0.1;
-float accelYzero = 0.2;
-float accelZzero = 10.1;
+float accelXzero = 0;
+float accelYzero = 0;
+float accelZzero = 0;
 
 // Filtro complementario Paso Bajo
-float alpha = 0.98; // Constante
+float alpha = 0.95; // Constante
 
 // Output angles
 float camber = 0;
@@ -18,6 +18,8 @@ float caster = 0;
 float casterTotal = 0;
 float wheelBase = 2.443;
 float trackWidth = 1.338;
+float dt;
+unsigned long millisOld;
 
 void setup() {
   Serial.begin(9600);
@@ -40,7 +42,6 @@ void loop() {
   float gyroY = (float)gyroYraw / 131.0;
   float gyroZ = (float)gyroZraw / 131.0;
 
-  // Aplicación de la calibración
   accelX -= accelXzero;
   accelY -= accelYzero;
   accelZ -= accelZzero;
@@ -51,7 +52,8 @@ void loop() {
 
   // Integración del giroscopio a grados
 
-  float dt = 0.01;
+  float dt = (millis() - millisOld) / 1000.;
+  millisOld = millis();
 
   roll += gyroX * dt;
   pitch += gyroY * dt;
@@ -59,25 +61,33 @@ void loop() {
 
   // Ejes direccionales
 
-  float rollAccel = atan(accelY / accelZ) * 180.0 / PI;
+  float rollAccel = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
   // float rollAccel = atan(accelY / ((pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
-  float pitchAccel = atan(-accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
+  float pitchAccel = atan(accelZ / sqrt(pow(accelX, 2) + pow(accelY, 2))) * 180.0 / PI;
+  float yawAccel = atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2)))* 180.0 / PI;
 
   // Filtro complementario
 
-  float rollAngle = (0.98 * roll) + (0.02 * rollAccel);
-  float pitchAngle = (0.98 * pitch) + (0.02 * pitchAccel);
+  // float rollAngle = (0.95 * roll) + (0.05 * rollAccel);
+  // float pitchAngle = (0.95 * pitch) + (0.05 * pitchAccel);
+  // float yawAngle = (0.95 * yaw) + (0.05 * yawAccel);
+
+  float rollAngle = (0.95 * rollAccel) + (0.05 * roll);
+  float pitchAngle = (0.95 * pitchAccel) + (0.05 * pitch);
+  float yawAngle = (0.95 * yawAccel) + (0.05 * yaw);
 
   // Camber
-  camber = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
+  camber = rollAccel;
 
   // Toe
-  toe = atan2(tan(roll), cos(pitch) - yaw) * 180.0 / PI;
-  //toe = ((rollAngle - pitchAngle) / 2);
+  toe = (pitchAngle - rollAngle) / 2;
+  //toe = (rollAngle - yawAngle) / 2;
   
   // Caster
-  caster = alpha * (caster + yaw) + (1 - alpha) * atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2)))* 180.0 / PI;
-  casterTotal = atan(tan(caster) * wheelBase / trackWidth);
+  //caster = pitchAngle;
+  //casterTotal = yawAccel;
+  casterTotal = (yawAngle * wheelBase) / trackWidth;
+  //casterTotal = atan((gyroY * cos(pitchAngle) + gyroZ * sin(yawAngle)) / sqrt(pow(accelX, 2) + pow(accelY, 2)));
   
 
   // Resultados
@@ -89,5 +99,5 @@ void loop() {
   Serial.print(casterTotal);
   Serial.println(" degrees");
 
-  delay(500);
+  delay(300);
 }
