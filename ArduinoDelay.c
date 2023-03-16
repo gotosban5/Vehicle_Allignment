@@ -79,7 +79,7 @@ void loop() {
     float yaw = 0.0;
 
     roll += gyroX * dt;
-    pitch += gyroX * dt;
+    pitch += gyroY * dt;
     yaw += gyroZ * dt;
 
     // Ejes direccionales
@@ -87,7 +87,8 @@ void loop() {
     float rollAccel = atan(accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
     // float rollAccel = atan(accelY / ((pow(accelX, 2) + pow(accelZ, 2))) * 180.0 / PI;
     // float pitchAccel = atan(accelZ / sqrt(pow(accelX, 2) + pow(accelY, 2))) * 180.0 / PI;
-    float pitchAccel = atan(-accelX / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
+    float pitchAccel = atan(-accelX / accelZ) * 180.0 / PI;
+     //float pitchAccel = atan(accelZ / sqrt(pow(accelY, 2) + pow(accelZ, 2))) * 180.0 / PI;
     float yawAccel = atan(accelY / sqrt(pow(accelX, 2) + pow(accelZ, 2)))* 180.0 / PI;
 
     // Filtro complementario
@@ -104,6 +105,7 @@ void loop() {
     camber = rollAccel;
 
     // Toe
+    //toe = atan(pitchAngle / pitchAccel) * 180.0 / PI;
     toe = (pitchAngle - rollAngle) / 2;
     //toe = atan(pitchAngle / pitchAccel);
   
@@ -121,9 +123,10 @@ void loop() {
     Serial.print(toe);
     Serial.print("°, Caster: ");
     Serial.print(casterTotal);
-    Serial.println("°");
+    Serial.print("°");
+    Serial.print(" Accel Y: ");
+    Serial.println(accelY);
 
     analyzer.write(0x55);
   }
 }
-
