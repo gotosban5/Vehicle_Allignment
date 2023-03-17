@@ -9,6 +9,9 @@ volatile int interruptFlag = 0;
 unsigned long previousTime = 0;
 unsigned long interval = 20; // intervalo en milisegundos
 
+const byte INTERRUPT_PIN = 3;
+volatile unsigned int timerOverflowCount = 0;
+
 // Datos de Calibración
 float accelXzero = 0;
 float accelYzero = 0;
@@ -29,9 +32,7 @@ unsigned long millisOld;
 
 SoftwareSerial analyzer(2, 3);
 
-void timerISR() {
-  interruptFlag = 1;
-}
+bool LED_STATE = true;
 
 void setup() {
   Serial.begin(9600);
@@ -39,21 +40,30 @@ void setup() {
   mpu.initialize();
   mpu.setFullScaleAccelRange(2);
   mpu.setFullScaleGyroRange(250); // rango del acelerometro +/- 2g
-  attachInterrupt(digitalPinToInterrupt(4), timerISR, FALLING); // Interruptor en pin 4
-  Timer1.initialize(interval * 1000UL); // Inicia el temporizador
-  Timer1.attachInterrupt(timerISR);
-  Timer1.start();
+
+  pinMode(INTERRUPT_PIN, INPUT_PULLUP);
+  
+  pinMode(2, OUTPUT);        //Set the pin to be OUTPUT
+  cli();
+
+  TCCR1A = 0;                 // Reset entire TCCR1A to 0 
+  TCCR1B = 0;
+
+  TCCR1B |= B00000011;
+
+  TIMSK1 |= B00000010;
+
+  OCR1A = 62500;
+
+  sei();  
 
   analyzer.begin(9600);
 
 }
 
-void loop() {
-  if (interruptFlag) {
-    noInterrupts();
-    interruptFlag = 0;
-    interrupts();
-
+void loop() 
+{
+  
     unsigned long currentTime = millis();
     double elapsedTime = (currentTime - previousTime) / 1000.0; // convert to seconds
     previousTime = currentTime;
@@ -106,9 +116,10 @@ void loop() {
 
     // Toe
     //toe = atan(pitchAngle / pitchAccel) * 180.0 / PI;
-    toe = (pitchAngle - rollAngle) / 2;
+    toe = ((pitchAngle - rollAngle) / 2);
     //toe = atan(pitchAngle / pitchAccel);
-  
+    //toe = pitchAngle;  
+    
     // Caster
     //caster = pitchAngle;
     //casterTotal = yawAccel;
@@ -128,5 +139,13 @@ void loop() {
     Serial.println(accelY);
 
     analyzer.write(0x55);
-  }
+  
 }
+
+ISR(TIMER1_COMPA_vect){
+  timerOverflowCount++;
+  TCNT1  = 0;                  //First, set the timer back to 0 so it resets for next interrupt
+  LED_STATE = !LED_STATE;      //Invert LED state
+  digitalWrite(2,LED_STATE);  //Write new state to the LED on pin D5
+}
+
