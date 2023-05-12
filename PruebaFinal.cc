@@ -29,6 +29,7 @@ float Angle[3];
 
 int x, y, z;
 float azimuth;
+float adjustedAzimuth;
 
 String valores;
 
@@ -136,19 +137,20 @@ ISR(TIMER1_COMPA_vect){
   z -= z_offset;
   
   azimuth = qmc.azimuth(&y, &x);
-  azimuth = azimuth - 180.0; // adjust for magnetic declination
+  azimuth -= 180.0; // adjust for magnetic declination
   
   if (azimuth < 0) {
-    azimuth += 360.0;
+    azimuth -= 0;
   }
 
-  Serial.print("Mx: ");
-  Serial.print(x);
-  Serial.print(", My: ");
-  Serial.print(y);
-  Serial.print(", Mz: ");
-  Serial.print(z);
-  Serial.print(", T: ");
+
+  // Serial.print("Mx: ");
+  // Serial.print(x);
+  // Serial.print(", My: ");
+  // Serial.print(y);
+  // Serial.print(", Mz: ");
+  // Serial.print(z);
+  Serial.print("T:");
   Serial.print(azimuth);
   Serial.print(", Ca:");
   Serial.print(Angle[1]);
@@ -158,6 +160,4 @@ ISR(TIMER1_COMPA_vect){
   analyzer.write(0x55);
 
 }
-
-
 
