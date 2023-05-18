@@ -28,6 +28,7 @@ float Gy[3];
 float Angle[3];
 
 int x, y, z;
+int x_offset_global, y_offset_global, z_offset_global;
 float azimuth;
 float adjustedAzimuth;
 
@@ -73,6 +74,30 @@ void readHMC() {
   qmc.read(&x, &y, &z);
 }
 
+void calibrateMagnetometer() {
+  selectChannel(1); // Select channel 1 for HMC5883L
+  
+  int numSamples = 100; // Number of samples to collect for calibration
+  int x_offset = 0, y_offset = 0, z_offset = 0;
+  
+  for (int i = 0; i < numSamples; i++) {
+    readHMC();
+    x_offset += x;
+    y_offset += y;
+    z_offset += z;
+    delay(10);
+  }
+  
+  x_offset /= numSamples;
+  y_offset /= numSamples;
+  z_offset /= numSamples;
+  
+  // Update the global offset variables
+  x_offset_global = x_offset;
+  y_offset_global = y_offset;
+  z_offset_global = z_offset;
+}
+
 void setup() {
   Wire.begin();
   Serial.begin(9600);
@@ -100,8 +125,7 @@ void loop() {
   selectChannel(0); // Select channel 0 for MPU6050
   readMPU();
   
-  selectChannel(1); // Select channel 1 for HMC5883L
-  readHMC();
+  calibrateMagnetometer();
 }
 
 ISR(TIMER1_COMPA_vect){
@@ -128,36 +152,47 @@ ISR(TIMER1_COMPA_vect){
   Angle[0] = 0.96 *(Angle[0]+Gy[0]*dt) + 0.04*Acc[0];
   Angle[1] = 0.96 *(Angle[1]+Gy[1]*dt) + 0.04*Acc[1];
 
+  double wheelDiameter = 330.2; // Diametro de la rueda bmw 318i
+  double radius = wheelDiameter / 2;
+  double milimetros = (M_PI * radius * Angle[1]) / 180; // conversión de grados a milimetros.
+  double Camber = asin(milimetros / wheelDiameter); // ángulo de Camber definitivo.
+  double CamberT = Camber * (180.0 / M_PI);
+
    //Mostrar los valores por consola
   //valores = "Caster: " +String(Angle[0]) + ", Camber: " + String(Angle[1]) + ", Toe: " + String(Angle[2]);
   //Serial.println(valores);
 
-  x -= x_offset;
-  y -= y_offset;
-  z -= z_offset;
-  
+  x -= x_offset_global;
+  y -= y_offset_global;
+  z -= z_offset_global;
+
   azimuth = qmc.azimuth(&y, &x);
-  azimuth -= 180.0; // adjust for magnetic declination
-  
+  azimuth -= 180.0; // Adjust for magnetic declination
+
   if (azimuth < 0) {
     azimuth -= 0;
   }
-
-
-  // Serial.print("Mx: ");
-  // Serial.print(x);
-  // Serial.print(", My: ");
-  // Serial.print(y);
-  // Serial.print(", Mz: ");
-  // Serial.print(z);
-  Serial.print("T:");
-  Serial.print(azimuth);
-  Serial.print(", Ca:");
+  
+  double milimetros2 = (M_PI * radius * azimuth) / 180; // conversión de grados a milimetros.
+  double distance = milimetros2 / wheelDiameter;
+  double toeAngle = asin(distance); // ángulo de Toe definitivo.
+  double toeAngleDegT = toeAngle * (180.0 / M_PI);
+  
+  Serial.print("X:");
   Serial.print(Angle[1]);
-  Serial.print(", Cs:");
-  Serial.println(Angle[0]);
+  Serial.print(", Y:");
+  Serial.print(Angle[0]);
+  Serial.print(", Z:");
+  Serial.print(azimuth);
+  Serial.print(", TRad:");
+  Serial.print(toeAngle);
+  Serial.print(", CaRad:");
+  Serial.print(Camber);
+  Serial.print(", TGrad:");
+  Serial.print(toeAngleDegT);
+  Serial.print(", CaGrad:");
+  Serial.println(CamberT);
 
   analyzer.write(0x55);
 
 }
-
